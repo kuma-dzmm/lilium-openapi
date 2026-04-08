@@ -10,6 +10,7 @@ Lilium 支付与清算相关的公开文档仓库。
 
 - Lilium 支付/清算接入文档
 - 对外 API 定义，例如 OpenAPI 文档
+- 批量清算 API 说明
 - Hosted Checkout、Webhook、认证接入说明
 - 面向第三方的示例请求、流程图和状态机说明
 
@@ -32,6 +33,7 @@ Lilium 对外入口分为两类：
 - `OAuth 2.0 client_credentials` 服务端鉴权
 - Hosted Checkout
 - OpenAPI 定义
+- 批量清算 API
 - Webhook 通知
 
 ## 目录约定

@@ -73,6 +73,7 @@ Lilium v1 对外使用两个域名：
 - `https://lilium.kuma.homes/.well-known/jwks.json`
 - `https://api.lilium.kuma.homes/v1/payment-intents`
 - `https://api.lilium.kuma.homes/v1/clearing-instructions`
+- `https://api.lilium.kuma.homes/v1/clearing-batches`
 - `https://lilium.kuma.homes/checkout/{checkout_token}`
 - `https://api.lilium.kuma.homes/openapi.json`
 
@@ -137,7 +138,7 @@ flowchart LR
     PI --> C["Lilium Hosted Checkout<br/>/checkout/{token}"]
     C -->|确认成功| A["payment_intent.authorized"]
     A --> B["第三方业务处理<br/>基金申购/失败/分红"]
-    B --> CI["提交 clearing_instruction<br/>POST /v1/clearing-instructions"]
+    B --> CI["提交 clearing_instruction / clearing_batch<br/>POST /v1/clearing-instructions<br/>POST /v1/clearing-batches"]
     CI --> W["Lilium 钱包清算"]
     W --> N["Webhook / 状态查询"]
     N --> P
@@ -148,6 +149,13 @@ flowchart LR
 ### 7.1 `user_id`
 
 Lilium 全局用户标识。第三方应将其作为稳定外键保存，用于后续所有用户相关调用。
+
+字段约束：
+
+- 类型：字符串
+- 格式：UUID
+- 长度：固定 36 字符
+- 示例：`550e8400-e29b-41d4-a716-446655440000`
 
 ### 7.2 `partner`
 
@@ -276,6 +284,77 @@ Lilium v1 支持以下操作类型：
 - 申购失败：`release`
 - 分红或赎回到账：`payout`
 
+### 8.1 `asset_code`
+
+为保证 OpenAPI 结构稳定，所有请求和响应仍然保留 `asset_code` 字段。
+
+但在 Lilium v1 中，`asset_code` 当前只有一个合法取值：
+
+- `dollors`
+
+这意味着：
+
+- 所有 `payment_intent` 请求中的 `asset_code` 必须传 `dollors`
+- 所有 `clearing_instruction` 请求中的 `asset_code` 必须传 `dollors`
+- 所有 `clearing_account` 的 `asset_code` 也应固定为 `dollors`
+
+未来如果资产种类增加，Lilium 会通过版本化或文档更新扩展允许值。
+
+### 8.2 `payment_intents.operation`
+
+`payment_intents.operation` 的合法取值只有：
+
+- `reserve`
+- `charge`
+
+不支持的取值包括但不限于：
+
+- `commit`
+- `release`
+- `payout`
+
+原因：
+
+- `payment_intent` 的职责是承载“需要用户确认”的动作
+- `reserve` 和 `charge` 都要求用户在 Hosted Checkout 中逐笔确认
+
+### 8.3 `clearing_instructions.operation`
+
+`clearing_instructions.operation` 的合法取值只有：
+
+- `commit`
+- `release`
+- `payout`
+
+不支持的取值包括但不限于：
+
+- `reserve`
+- `charge`
+
+原因：
+
+- `clearing_instruction` 的职责是承载“后台清算动作”
+- 这类动作不应再次要求用户确认
+- `reserve` 和 `charge` 都必须先通过 `payment_intent` 完成用户授权
+
+### 8.4 `clearing_batches.operation`
+
+`clearing_batches.operation` 的合法取值只有：
+
+- `commit`
+- `release`
+- `payout`
+
+不支持的取值包括但不限于：
+
+- `reserve`
+- `charge`
+
+原因：
+
+- 批量接口只适用于无需再次用户确认的后台处理
+- `reserve` 和 `charge` 都要求用户逐笔在 Hosted Checkout 中确认，因此不能批量执行
+
 ## 9. 用户登录
 
 ### 9.1 OIDC 登录流程
@@ -288,7 +367,7 @@ Lilium v1 支持以下操作类型：
 - discovery document
 - JWKS endpoint
 
-第三方应将 ID Token 中的 `sub` 视为 Lilium `user_id`。
+第三方应将 ID Token 中的 `sub` 视为 Lilium `user_id`。`sub` 的格式同样是 UUID 字符串。
 
 ### 9.2 为什么推荐 OIDC
 
@@ -342,6 +421,40 @@ Idempotency-Key: <uuid>
 Content-Type: application/json
 ```
 
+### 10.3 字段与长度约束
+
+除非另有说明，所有字符串字段都应使用 UTF-8 编码，且不应包含前后空白。
+
+| 字段 | 适用范围 | 类型 | 格式 / 长度约束 | 说明 |
+| --- | --- | --- | --- | --- |
+| `user_id` | 所有用户相关请求/响应 | string | UUID，固定 36 字符 | 例如 `550e8400-e29b-41d4-a716-446655440000` |
+| `partner_id` | 第三方配置 | string | 1-64 字符 | 建议使用稳定的机构标识 |
+| `account_code` | `payment_intent` / `clearing_instruction` / `clearing_batch` | string | 1-64 字符 | 例如 `fund.alpha` |
+| `wallet_user_id` | 清算账户配置 | string | 1-128 字符 | Lilium 内部系统钱包标识 |
+| `intent_id` | `payment_intent` 响应 | string | 1-64 字符 | 由 Lilium 生成，例如 `pi_...` |
+| `instruction_id` | `clearing_instruction` 响应 | string | 1-64 字符 | 由 Lilium 生成，例如 `ci_...` |
+| `batch_id` | `clearing_batch` 响应 | string | 1-64 字符 | 由 Lilium 生成，例如 `cb_...` |
+| `partner_reference_id` | 单笔业务请求 | string | 1-128 字符 | 第三方业务侧唯一引用，建议幂等稳定 |
+| `batch_reference_id` | 批量请求 | string | 1-128 字符 | 第三方批次引用 |
+| `asset_code` | 所有清算相关请求/响应 | string | 固定值 `dollors` | v1 当前唯一合法取值 |
+| `amount` | 所有金额字段 | string | 正数字符串，最多 18 位整数 + 2 位小数 | 例如 `1000.00` |
+| `title` | `payment_intent` | string | 1-64 字符 | 用户在 Checkout 页看到的标题 |
+| `summary` | `payment_intent` | string | 1-200 字符 | 用户在 Checkout 页看到的说明 |
+| `note` | `clearing_instruction` / `clearing_batch.items[]` | string | 0-200 字符 | 可选说明 |
+| `return_url` | `payment_intent` | string | HTTPS URL，最长 2048 字符 | 支付完成后跳回地址 |
+| `cancel_url` | `payment_intent` | string | HTTPS URL，最长 2048 字符 | 用户取消后跳回地址 |
+| `webhook_url` | partner 配置 | string | HTTPS URL，最长 2048 字符 | Webhook 接收地址 |
+| `Idempotency-Key` | 所有写接口请求头 | string | 1-128 字符 | 建议使用 UUID |
+
+补充规则：
+
+- `amount` 必须大于 `0`
+- `amount` 统一使用字符串传输，禁止使用 JSON number
+- `title`、`summary`、`note` 不应包含 HTML 或脚本片段
+- `return_url`、`cancel_url`、`webhook_url` 必须是 `https://` 地址
+- `partner_reference_id` 在同一个 partner 的同一种业务动作下应保持唯一
+- `batch_reference_id` 在同一个 partner 下应保持唯一
+
 ## 11. 主流程说明
 
 ### 11.1 申购冻结流程
@@ -356,7 +469,7 @@ participant Checkout as Lilium Checkout
 
 User->>Partner: 访问第三方网站
 Partner->>LiliumId: OIDC 登录
-LiliumId-->>Partner: id_token(sub=user_id)
+LiliumId-->>Partner: id_token(sub=uuid user_id)
 Partner->>LiliumApi: 创建 payment_intent(reserve)
 LiliumApi-->>Partner: intent_id + checkout_url
 Partner-->>User: 跳转 checkout_url
@@ -433,23 +546,46 @@ Checkout-->>Partner: 跳回 return_url
 - `error_code`
 - `error_message`
 
+### 12.3 `clearing_batch`
+
+表示一批后台清算动作的提交与执行结果汇总。
+
+关键字段：
+
+- `batch_id`
+- `operation`
+- `account_code`
+- `asset_code`
+- `status`
+- `item_count`
+- `success_count`
+- `failed_count`
+- `created_at`
+- `completed_at`
+- `items`
+
 ## 13. Payment Intent API
 
 ### 13.1 创建支付意图
 
 `POST /v1/payment-intents`
 
+`operation` 取值范围：
+
+- `reserve`
+- `charge`
+
 请求示例：
 
 ```json
 {
-  "user_id": "u_123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "operation": "reserve",
   "account_code": "fund.alpha",
   "amount": "1000.00",
-  "asset_code": "COIN",
+  "asset_code": "dollors",
   "title": "Alpha 基金申购",
-  "summary": "冻结 1000.00 COIN 用于 Alpha 基金申购",
+  "summary": "冻结 1000.00 dollors 用于 Alpha 基金申购",
   "partner_reference_id": "sub_20260409_001",
   "return_url": "https://partner.example.com/pay/return",
   "cancel_url": "https://partner.example.com/pay/cancel",
@@ -478,11 +614,11 @@ Checkout-->>Partner: 跳回 return_url
 {
   "intent_id": "pi_001",
   "status": "authorized",
-  "user_id": "u_123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "operation": "reserve",
   "account_code": "fund.alpha",
   "amount": "1000.00",
-  "asset_code": "COIN",
+  "asset_code": "dollors",
   "partner_reference_id": "sub_20260409_001",
   "authorized_at": "2026-04-09T12:01:02Z"
 }
@@ -500,16 +636,22 @@ Checkout-->>Partner: 跳回 return_url
 
 `POST /v1/clearing-instructions`
 
+`operation` 取值范围：
+
+- `commit`
+- `release`
+- `payout`
+
 申购成功示例：
 
 ```json
 {
   "operation": "commit",
   "intent_id": "pi_001",
-  "user_id": "u_123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "account_code": "fund.alpha",
   "amount": "1000.00",
-  "asset_code": "COIN",
+  "asset_code": "dollors",
   "partner_reference_id": "sub_20260409_001",
   "note": "申购成功"
 }
@@ -521,10 +663,10 @@ Checkout-->>Partner: 跳回 return_url
 {
   "operation": "release",
   "intent_id": "pi_001",
-  "user_id": "u_123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "account_code": "fund.alpha",
   "amount": "1000.00",
-  "asset_code": "COIN",
+  "asset_code": "dollors",
   "partner_reference_id": "sub_20260409_001",
   "note": "申购失败退回"
 }
@@ -535,10 +677,10 @@ Checkout-->>Partner: 跳回 return_url
 ```json
 {
   "operation": "payout",
-  "user_id": "u_123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "account_code": "fund.alpha",
   "amount": "85.25",
-  "asset_code": "COIN",
+  "asset_code": "dollors",
   "partner_reference_id": "dividend_20260409_001",
   "note": "分红发放"
 }
@@ -551,7 +693,7 @@ Checkout-->>Partner: 跳回 return_url
   "instruction_id": "ci_001",
   "status": "executed",
   "operation": "payout",
-  "user_id": "u_123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "amount": "85.25",
   "executed_at": "2026-04-09T12:10:00Z"
 }
@@ -560,6 +702,78 @@ Checkout-->>Partner: 跳回 return_url
 ### 14.2 查询清算指令
 
 `GET /v1/clearing-instructions/{instruction_id}`
+
+### 14.3 创建批量清算任务
+
+`POST /v1/clearing-batches`
+
+批量清算仅适用于无需再次用户确认的后台动作。
+
+`operation` 取值范围：
+
+- `commit`
+- `release`
+- `payout`
+
+Lilium v1 不支持对以下动作使用批量接口：
+
+- `reserve`
+- `charge`
+
+原因是 `reserve` 和 `charge` 都要求用户逐笔在 Hosted Checkout 中确认。
+
+请求示例：
+
+```json
+{
+  "operation": "payout",
+  "account_code": "fund.alpha",
+  "asset_code": "dollors",
+  "batch_reference_id": "dividend_batch_20260409_001",
+  "items": [
+    {
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "amount": "85.25",
+      "partner_reference_id": "dividend_20260409_001",
+      "note": "分红发放"
+    },
+    {
+      "user_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "amount": "120.00",
+      "partner_reference_id": "dividend_20260409_002",
+      "note": "分红发放"
+    }
+  ]
+}
+```
+
+响应示例：
+
+```json
+{
+  "batch_id": "cb_001",
+  "status": "pending",
+  "operation": "payout",
+  "account_code": "fund.alpha",
+  "asset_code": "dollors",
+  "item_count": 2,
+  "success_count": 0,
+  "failed_count": 0,
+  "created_at": "2026-04-09T12:15:00Z"
+}
+```
+
+### 14.4 查询批量清算任务
+
+`GET /v1/clearing-batches/{batch_id}`
+
+响应中应至少包含：
+
+- 批次状态
+- 总条数
+- 成功条数
+- 失败条数
+- 失败项的错误码与错误信息
 
 ## 15. Hosted Checkout 行为规范
 
@@ -624,6 +838,28 @@ stateDiagram-v2
     failed --> [*]
     executed --> [*]
     reversed --> [*]
+```
+
+### 16.3 `clearing_batch` 状态
+
+- `pending`
+- `executing`
+- `completed`
+- `partial_failed`
+- `failed`
+
+状态机：
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending
+    pending --> executing: 开始批处理
+    executing --> completed: 全部成功
+    executing --> partial_failed: 部分成功部分失败
+    executing --> failed: 全部失败
+    completed --> [*]
+    partial_failed --> [*]
+    failed --> [*]
 ```
 
 ## 17. Webhook
@@ -712,6 +948,7 @@ Lilium v1 不承诺提供或维护官方 SDK。
 - `POST /v1/payment-intents`
 - `POST /v1/payment-intents/{intent_id}/cancel`
 - `POST /v1/clearing-instructions`
+- `POST /v1/clearing-batches`
 
 推荐做法：
 
@@ -738,7 +975,7 @@ Lilium v1 不承诺提供或维护官方 SDK。
 - 实现创建 `payment_intent`
 - 完成跳转 Hosted Checkout
 - 接收并处理 Webhook
-- 在业务完成后调用 `commit`、`release` 或 `payout`
+- 在业务完成后调用 `commit`、`release`、`payout` 或批量清算 API
 - 为所有写接口实现幂等
 - 为所有业务订单保存 `partner_reference_id`
 
@@ -751,6 +988,7 @@ Lilium v1 不承诺提供或维护官方 SDK。
 - `commit`
 - `release`
 - `payout`
+- 批量 `payout`
 - Webhook
 
 这一范围已足以支持：
@@ -759,6 +997,7 @@ Lilium v1 不承诺提供或维护官方 SDK。
 - 申购失败退回
 - 基金赎回到账
 - 基金分红发放
+- 批量分红发放
 
 ## 24. 总结
 
@@ -778,4 +1017,4 @@ Lilium 开放清算 API v1 的最小心智模型如下：
 3. 创建 `payment_intent`
 4. 跳转 `checkout_url`
 5. 处理 Webhook
-6. 在业务结果明确后调用 `commit`、`release` 或 `payout`
+6. 在业务结果明确后调用 `commit`、`release`、`payout` 或批量清算 API
