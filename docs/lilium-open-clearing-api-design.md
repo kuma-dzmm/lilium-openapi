@@ -200,7 +200,7 @@ partner 核心身份字段：
 | `partner_reference_id` | 单笔业务请求 | string | 1-128 字符 | 第三方业务侧唯一引用 |
 | `batch_reference_id` | 批量业务请求 | string | 1-128 字符 | 第三方批次引用 |
 | `asset_code` | 所有清算相关请求/响应 | string | 固定值 `dollars` | v1 当前唯一合法取值 |
-| `amount` | 所有金额字段 | string | 正数字符串，最多 18 位整数 + 2 位小数 | 例如 `1000.00` |
+| `amount` | 所有金额字段 | string | 正数字符串，符合 `DECIMAL(38,2)`，即最多 36 位整数 + 2 位小数 | 例如 `1000.00` |
 | `title` | `payment_intent` | string | 1-64 字符 | Checkout 页展示标题 |
 | `summary` | `payment_intent` | string | 1-200 字符 | Checkout 页展示说明 |
 | `note` | `clearing_instruction` / `clearing_batch.items[]` | string | 0-200 字符 | 可选说明 |
