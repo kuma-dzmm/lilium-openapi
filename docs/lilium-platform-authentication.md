@@ -41,7 +41,7 @@ Lilium 使用统一域名：
 - `https://lilium.kuma.homes/userinfo`
 - `https://lilium.kuma.homes/.well-known/openid-configuration`
 - `https://lilium.kuma.homes/.well-known/jwks.json`
-- `https://lilium.kuma.homes/api/openapi.json`
+- `https://lilium.kuma.homes/openapi.json`
 
 业务文档可以在此基础上定义自己的业务端点，例如清算相关的 `/api/v1/*`。
 

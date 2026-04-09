@@ -96,7 +96,7 @@ Lilium 负责：
 - `https://lilium.kuma.homes/api/v1/clearing-instructions`
 - `https://lilium.kuma.homes/api/v1/clearing-batches`
 - `https://lilium.kuma.homes/checkout/{checkout_token}`
-- `https://lilium.kuma.homes/api/openapi.json`
+- `https://lilium.kuma.homes/openapi.json`
 
 认证边界：
 
