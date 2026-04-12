@@ -284,30 +284,15 @@ request_payload = {
 <a id="errors"></a>
 ## 8. 错误模型
 
-错误响应统一格式：
+本规范不单独定义错误响应结构。钱包 API 统一使用：
 
-```json
-{
-  "detail": "insufficient_balance"
-}
-```
+- [Lilium API 错误模型规范 v1](./lilium-error-model.md)
 
-钱包转账错误码：
+钱包能力相关说明见该文档中的：
 
-| 场景 | HTTP status | detail |
-| --- | --- | --- |
-| 缺少幂等 key | 400 | `missing_idempotency_key` |
-| 目标不存在 | 404 | `recipient_not_found` |
-| 目标为内部账户 | 422 | `invalid_recipient` |
-| 自转账 | 422 | `self_transfer` |
-| 余额不足 | 422 | `insufficient_balance` |
-| 幂等冲突 | 409 | `idempotency_conflict` |
-| 金额非法 | 422 | `invalid_amount` |
-
-钱包只读错误码沿用平台认证文档的通用错误码：
-
-- `UNAUTHORIZED_PARTNER`
-- `INVALID_SCOPE`
+- [统一错误响应结构](./lilium-error-model.md#envelope)
+- [通用规则](./lilium-error-model.md#rules)
+- [钱包能力错误码](./lilium-error-model.md#wallet-codes)
 
 <a id="idempotency"></a>
 ## 9. 幂等要求
