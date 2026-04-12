@@ -40,7 +40,14 @@
   "error": {
     "code": "INVALID_FIELD",
     "message": "request validation failed",
-    "retryable": false
+    "retryable": false,
+    "details": [
+      {
+        "loc": ["body", "amount"],
+        "msg": "Field required",
+        "type": "missing"
+      }
+    ]
   },
   "request_id": "req_001"
 }
@@ -57,6 +64,10 @@
 - `error.retryable`
   - 是否建议调用方直接重试同一请求
   - 默认 `false`
+- `error.details`
+  - 可选的结构化附加信息
+  - 当服务端掌握更细粒度的校验或错误上下文时返回
+  - 调用方可将其用于调试、表单提示或日志，不应假设它在所有错误中都存在
 - `request_id`
   - 当前错误响应的请求标识
   - 用于日志检索、工单排障与跨系统追踪
