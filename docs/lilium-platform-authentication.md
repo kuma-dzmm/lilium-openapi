@@ -29,6 +29,10 @@
 
 - [Lilium 开放清算 API 接入规范 v1](./lilium-open-clearing-api-design.md)
 
+示例第三方接入实现见：
+
+- [lilium-bank-demo](https://github.com/kuma-dzmm/lilium-bank-demo)
+
 <a id="routing"></a>
 ## 2. 统一域名与平台入口
 

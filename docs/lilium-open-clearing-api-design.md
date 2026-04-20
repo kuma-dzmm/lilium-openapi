@@ -72,6 +72,10 @@ Lilium 负责：
 - Lilium 不计算基金净值、份额、收益、亏损或持仓
 - Lilium 不提供官方 SDK，仅提供 OpenAPI 契约
 
+示例第三方接入实现见：
+
+- [lilium-bank-demo](https://github.com/kuma-dzmm/lilium-bank-demo)
+
 <a id="endpoints"></a>
 <a id="shared-platform"></a>
 ## 2. 共享平台能力

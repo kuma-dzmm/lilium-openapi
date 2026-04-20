@@ -20,6 +20,10 @@ Lilium 面向第三方开发者的公开接口与接入文档仓库。
 - [Lilium 开放清算 API 接入规范 v1.1](./docs/lilium-open-clearing-api-design.md)
 - [Lilium 钱包 API 接入规范 v1](./docs/lilium-wallet-api-design.md)
 
+示例第三方接入仓库：
+
+- [lilium-bank-demo](https://github.com/kuma-dzmm/lilium-bank-demo)
+
 文档边界：
 
 - 仅描述第三方需要知道的公开入口、认证方式、字段、状态与安全要求
